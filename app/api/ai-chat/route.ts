@@ -1,20 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenAI } from '@google/genai';
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 export async function POST(request: NextRequest) {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return NextResponse.json({ reply: 'ANTHROPIC_API_KEY not configured.' }, { status: 500 });
+  if (!process.env.GEMINI_API_KEY) {
+    return NextResponse.json({ reply: 'GEMINI_API_KEY not configured.' }, { status: 500 });
   }
   const { messages, systemContext } = await request.json();
   try {
-    const res = await client.messages.create({
-      model: 'claude-opus-4-5', max_tokens: 1024,
-      system: systemContext,
-      messages: messages.slice(-10),
+    const prompt = systemContext + '\n\n' + messages.map((m: any) => `${m.role}: ${m.content}`).join('\n\n');
+    
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
     });
-    return NextResponse.json({ reply: (res.content[0] as any).text });
+    return NextResponse.json({ reply: response.text || '' });
   } catch (err: any) {
     return NextResponse.json({ reply: 'Error: ' + err.message }, { status: 500 });
   }
